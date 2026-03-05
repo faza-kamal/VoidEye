@@ -48,6 +48,7 @@ def show_menu() -> None:
     table.add_row("[5]", "Onion Search")
     table.add_row("[6]", "Port Scanner")
     table.add_row("[0]", "[red]Exit[/red]")
+    table.add_row("", "[dim]Kategori dork: files, admin, creds, github, vuln, social[/dim]")
     console.print(Panel(table, title="[bold cyan]─── VoidEye Menu ───[/bold cyan]", border_style="cyan"))
 
 
@@ -58,15 +59,23 @@ def interactive_mode() -> None:
         "1": lambda: asyncio.run(UsernameScan(Prompt.ask("[yellow]  Username[/yellow]")).run()),
         "2": lambda: asyncio.run(EmailScan(Prompt.ask("[yellow]  Email[/yellow]")).run()),
         "3": lambda: DomainScan(Prompt.ask("[yellow]  Domain / IP[/yellow]")).run(),
-        "4": lambda: DorkGenerator(Prompt.ask("[yellow]  Keyword[/yellow]")).run(),
+        "4": lambda: DorkGenerator(
+                Prompt.ask("[yellow]  Keyword[/yellow]"),
+                category=Prompt.ask("[yellow]  Kategori[/yellow] [dim](files/admin/creds/github/vuln/social, kosongkan = semua)[/dim]", default="") or None
+             ).run(),
         "5": lambda: asyncio.run(OnionSearch(Prompt.ask("[yellow]  Query[/yellow]")).run()),
+        "6": lambda: PortScan(
+                Prompt.ask("[yellow]  Target[/yellow]"),
+                int(Prompt.ask("[yellow]  Port awal[/yellow]", default="1")),
+                int(Prompt.ask("[yellow]  Port akhir[/yellow]", default="1024")),
+             ).run(),
         "0": lambda: (console.print("\n[dim]Goodbye.[/dim]\n"), sys.exit(0)),
     }
     action = handlers.get(choice)
     if action:
         action()
     else:
-        print_error("Invalid option. Use 0-5.")
+        print_error("Invalid option. Use 0-6.")
 
 
 def build_parser() -> argparse.ArgumentParser:

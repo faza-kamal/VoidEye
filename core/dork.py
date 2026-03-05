@@ -22,6 +22,11 @@ DORK_TEMPLATES: dict[str, list[str]] = {
         'site:{target} ext:log',
         'site:{target} ext:env',
         'site:{target} ext:config',
+        'site:{target} ext:xml',
+        'site:{target} ext:json',
+        'site:{target} ext:yaml OR ext:yml',
+        'site:{target} ext:ini',
+        'site:{target} ext:zip OR ext:tar OR ext:gz',
         'site:{target} intitle:"index of"',
         'site:{target} filetype:txt inurl:password',
     ],
@@ -36,6 +41,11 @@ DORK_TEMPLATES: dict[str, list[str]] = {
         'site:{target} inurl:webmail',
         'site:{target} inurl:portal',
         'site:{target} inurl:administrator',
+        'site:{target} inurl:manage',
+        'site:{target} inurl:control',
+        'site:{target} inurl:backend',
+        'site:{target} intitle:"Login" inurl:admin',
+        'site:{target} inurl:user/login',
     ],
     "creds": [
         'site:{target} intext:"password" filetype:txt',
@@ -46,6 +56,11 @@ DORK_TEMPLATES: dict[str, list[str]] = {
         'site:{target} inurl:config intext:password',
         '"@{target}" intext:password site:pastebin.com',
         '"@{target}" intext:password site:github.com',
+        'site:{target} intext:"secret_key"',
+        'site:{target} intext:"access_token"',
+        'site:{target} filetype:env intext:SECRET',
+        'site:{target} intext:"mysql_password"',
+        'site:{target} intext:"db_password"',
     ],
     "github": [
         'site:github.com "{target}" password',
@@ -55,6 +70,33 @@ DORK_TEMPLATES: dict[str, list[str]] = {
         'site:github.com "{target}" credentials',
         'site:github.com "{target}" private_key',
         'site:github.com "{target}" .env',
+        'site:github.com "{target}" config.yml',
+        'site:github.com "{target}" id_rsa',
+        'site:github.com "{target}" BEGIN RSA PRIVATE KEY',
+    ],
+    "vuln": [
+        'site:{target} inurl:"?id=" intext:"mysql"',
+        'site:{target} inurl:".php?id="',
+        'site:{target} inurl:"page=" inurl:".php"',
+        'site:{target} inurl:"search=" inurl:".php"',
+        'site:{target} inurl:"cat=" inurl:".php"',
+        'site:{target} intitle:"error" intext:"sql"',
+        'site:{target} inurl:"redirect=" OR inurl:"url="',
+        'site:{target} inurl:".php?" intext:"Warning: mysql"',
+        'site:{target} intext:"Fatal error" ext:php',
+        'site:{target} intitle:"Index of" inurl:upload',
+    ],
+    "social": [
+        'site:linkedin.com "{target}"',
+        'site:facebook.com "{target}"',
+        'site:twitter.com "{target}"',
+        'site:instagram.com "{target}"',
+        'site:tiktok.com "{target}"',
+        'site:reddit.com "{target}"',
+        'site:youtube.com "{target}"',
+        '"@{target}" site:twitter.com',
+        '"@{target}" site:instagram.com',
+        '"{target}" intext:email site:linkedin.com',
     ],
 }
 
@@ -92,7 +134,8 @@ class DorkGenerator:
             console.print(table)
 
         console.print(f"\n[dim]Total dorks generated: {len(all_dorks)}[/dim]")
-        copy = console.input("\n[bold cyan]Copy all dorks to clipboard? (y/N):[/bold cyan] ")
+        console.print(f"[dim]Kategori: {', '.join(dorks.keys())}[/dim]\n")
+        copy = console.input("[bold cyan]Copy all dorks to clipboard? (y/N):[/bold cyan] ")
         if copy.strip().lower() == "y":
             try:
                 pyperclip.copy("\n".join(all_dorks))

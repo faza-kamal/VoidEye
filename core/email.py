@@ -39,6 +39,12 @@ class EmailScan:
         except Exception:
             return []
 
+    def _txt_lookup(self) -> list[str]:
+        try:
+            return [str(r) for r in dns.resolver.resolve(self._domain(), "TXT")]
+        except Exception:
+            return []
+
     async def _gravatar(self, session: aiohttp.ClientSession) -> Optional[str]:
         md5 = hashlib.md5(self.email.encode()).hexdigest()
         try:
@@ -52,7 +58,6 @@ class EmailScan:
     async def _github_footprint(self, session: aiohttp.ClientSession) -> Optional[str]:
         try:
             async with session.get(
-                # BUG FIX #3: gunakan full email, bukan hanya local part
                 f"https://api.github.com/search/users?q={self.email}+in:email",
                 headers={**HEADERS, "Accept": "application/vnd.github+json"},
             ) as resp:
@@ -79,23 +84,61 @@ class EmailScan:
             pass
         return None
 
+    async def _pastebin_footprint(self, session: aiohttp.ClientSession) -> Optional[str]:
+        try:
+            url = f"https://pastebin.com/search?q={self.email}"
+            async with session.get(url, headers=HEADERS) as resp:
+                if resp.status == 200:
+                    body = await resp.text(errors="ignore")
+                    if "No pastes found" not in body and self._local() in body:
+                        return url
+        except Exception:
+            pass
+        return None
+
+    async def _twitter_footprint(self, session: aiohttp.ClientSession) -> Optional[str]:
+        try:
+            url = f"https://twitter.com/{self._local()}"
+            async with session.get(url, headers=HEADERS) as resp:
+                if resp.status == 200:
+                    body = await resp.text(errors="ignore")
+                    if "This account doesn't exist" not in body:
+                        return url
+        except Exception:
+            pass
+        return None
+
     async def run(self) -> None:
         if not self._valid:
             console.print(f"[red]Invalid email:[/red] {self.email}")
             return
         console.rule(f"[bold cyan]Email Scan  ·  [yellow]{self.email}[/yellow]")
-        mx_records = self._mx_lookup()
+        mx_records  = self._mx_lookup()
+        txt_records = self._txt_lookup()
+
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=TIMEOUT)) as session:
-            gravatar, github, reddit = await asyncio.gather(
-                self._gravatar(session), self._github_footprint(session), self._reddit_footprint(session),
+            gravatar, github, reddit, pastebin, twitter = await asyncio.gather(
+                self._gravatar(session),
+                self._github_footprint(session),
+                self._reddit_footprint(session),
+                self._pastebin_footprint(session),
+                self._twitter_footprint(session),
             )
+
+        spf   = next((r for r in txt_records if "v=spf1" in r), None)
+        dmarc = next((r for r in txt_records if "DMARC1" in r.upper()), None)
+
         t = Table(box=box.SIMPLE, show_header=False)
-        t.add_column("k", style="cyan", width=14)
+        t.add_column("k", style="cyan", width=16)
         t.add_column("v")
         t.add_row("Email",      self.email)
         t.add_row("Domain",     self._domain())
         t.add_row("MX Records", "\n".join(mx_records) if mx_records else "[red]None found[/red]")
-        t.add_row("Gravatar",   gravatar or "[dim]Not found[/dim]")
-        t.add_row("GitHub",     github   or "[dim]Not found[/dim]")
-        t.add_row("Reddit",     reddit   or "[dim]Not found[/dim]")
+        t.add_row("SPF",        spf   or "[dim]Not found[/dim]")
+        t.add_row("DMARC",      dmarc or "[dim]Not found[/dim]")
+        t.add_row("Gravatar",   gravatar  or "[dim]Not found[/dim]")
+        t.add_row("GitHub",     github    or "[dim]Not found[/dim]")
+        t.add_row("Reddit",     reddit    or "[dim]Not found[/dim]")
+        t.add_row("Twitter/X",  twitter   or "[dim]Not found[/dim]")
+        t.add_row("Pastebin",   pastebin  or "[dim]Not found[/dim]")
         console.print(Panel(t, title="[bold cyan]Email OSINT[/bold cyan]", border_style="cyan"))
